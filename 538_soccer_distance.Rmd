@@ -1,0 +1,85 @@
+---
+title: "538_soccer_distance"
+author: "Conor Tompkins"
+date: "8/15/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+#library(devtools)
+#install_github("dgrtwo/widyr")
+
+library(tidyverse)
+library(widyr)
+library(broom)
+
+theme_set(theme_bw())
+
+df <- read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_global_rankings.csv", progress = FALSE)
+df
+
+df %>% 
+  select(name, league) -> df_team_league
+```
+
+```{r}
+df %>% 
+  group_by(league) %>% 
+  mutate(off_league_median = median(off),
+         off_league_median = median(def))
+
+
+df %>% 
+  group_by(league) %>% 
+  mutate(off_z = scale(off),
+         def_z = scale(def)) -> df_rel_league
+```
+
+```{r}
+df_rel_league %>% 
+  ggplot(aes(off, def, color = league)) +
+  geom_jitter(alpha = .5, show.legend = FALSE)
+```
+
+
+```{r}
+df_rel_league %>% 
+  ggplot(aes(off_z, def_z, color = league)) +
+  geom_jitter(alpha = .5, show.legend = FALSE)
+```
+
+```{r}
+df_rel_league %>% 
+  ggplot(aes(off, off_z, color = league)) +
+  geom_jitter(alpha = .5, show.legend = FALSE)
+```
+
+```{r}
+df_rel_league %>% 
+  ggplot(aes(def, def_z, color = league)) +
+  geom_jitter(alpha = .5, show.legend = FALSE) +
+  scale_x_reverse() +
+  scale_y_reverse()
+```
+
+```{r}
+df_rel_league %>% 
+  ungroup() %>% 
+  select(name, off_z, def_z) %>% 
+  column_to_rownames(var = "name") -> df_dist
+
+df_dist
+rownames(df_dist) %>% 
+  head()
+
+df_dist <- dist(df_dist, "euclidean")
+head(df_dist)
+
+df_dist %>% 
+  tidy() %>% 
+  left_join(df_team_league, by = c("item2" = "name")) -> df_dist
+```
