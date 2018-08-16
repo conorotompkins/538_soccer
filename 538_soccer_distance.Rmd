@@ -10,12 +10,10 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
 ```{r}
-#library(devtools)
-#install_github("dgrtwo/widyr")
-
 library(tidyverse)
-library(widyr)
 library(broom)
+library(ggraph)
+library(tidygraph)
 
 theme_set(theme_bw())
 
@@ -81,5 +79,20 @@ head(df_dist)
 
 df_dist %>% 
   tidy() %>% 
+  arrange(desc(distance)) %>% 
+  left_join(df_team_league, by = c("item1" = "name")) %>% 
   left_join(df_team_league, by = c("item2" = "name")) -> df_dist
+#This is wrong. Some teams don't have enough rows
+```
+
+```{r}
+df_dist %>% 
+  filter(league.x == "Barclays Premier League",
+         league.y == "Barclays Premier League") %>% 
+  #filter(item1 == "Pittsburgh Riverhounds") %>%
+  as_tbl_graph() %>% 
+  ggraph(layout = "drl") +
+    geom_edge_fan(aes(edge_alpha = distance)) + 
+    geom_node_label(aes(label = name)) +
+    scale_edge_alpha_continuous(range = c(0, .75))
 ```
