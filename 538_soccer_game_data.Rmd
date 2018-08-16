@@ -1,0 +1,22 @@
+---
+title: "538_soccer_game_data"
+author: "Conor Tompkins"
+date: "8/15/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+
+df <- read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv", progress = FALSE)
+df
+```
+
+
+
