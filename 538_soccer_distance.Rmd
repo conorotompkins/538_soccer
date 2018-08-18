@@ -15,8 +15,9 @@ library(tidyverse)
 library(broom)
 library(ggraph)
 library(tidygraph)
+library(viridis)
 
-theme_set(theme_bw())
+set_graph_style()
 
 df <- read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_global_rankings.csv", progress = FALSE)
 df
@@ -95,8 +96,10 @@ df_dist %>%
          league.y == "United Soccer League") %>% 
   summarize(percentile = quantile(distance, probs = .3)) %>% 
   unlist() -> distance_filter
-
-
+```
+```{r}
+league1 <- "United Soccer League"
+league2 <- NULL
 df_dist %>% 
   mutate(distance = distance^2) %>% 
   #filter(item1 == "Pittsburgh Riverhounds") %>% 
@@ -108,8 +111,17 @@ df_dist %>%
 ```
 
 ```{r fig.height=15, fig.width=15}
+#leave this one alone
 league1 <- "United Soccer League"
 league2 <- NULL
+
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  filter(league.x == league1,
+         league.y == league1) %>% 
+  summarize(percentile = quantile(distance, probs = .3)) %>% 
+  unlist() -> distance_filter
+
 df_dist %>% 
   mutate(distance = distance^2) %>% 
   #filter(item1 == "Pittsburgh Riverhounds") %>% 
@@ -142,11 +154,10 @@ df_dist %>%
   #filter(item1 == "Pittsburgh Riverhounds") %>% 
   filter(league.x %in% c(league1, league2),
          league.y %in% c(league1, league2)) %>% 
-  filter(distance <= distance_filter) %>%
-  as_tbl_graph() %>% 
-  #igraph::simplify(.) %>%
-  #as_tbl_graph() %>% 
-  #convert(to_simple) %>% 
+  filter(distance <= 1.56) %>%
+  as_tbl_graph() -> test
+  convert(to_simple) %>% 
+  as_tbl_graph()
     ggraph(layout = "kk", maxiter = 1000) +
     geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
     geom_node_label(aes(label = name), size = 4) +
@@ -158,7 +169,40 @@ df_dist %>%
        y = NULL,
        caption = "538 data, @conor_tompkins")
 
-
-
 ```
 
+```{r fig.height=15, fig.width=15}
+league <- "United Soccer League"
+
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  filter(league.x == league,
+         league.y == league) %>% 
+  summarize(percentile = quantile(distance, probs = .3)) %>% 
+  unlist() -> distance_filter
+
+league1 <- league
+league2 <- league
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  filter(league.x %in% c(league1, league2),
+         league.y %in% c(league1, league2)) %>% 
+  filter(distance <= distance_filter) %>%
+  as_tbl_graph() %>% 
+  mutate(community = as.factor(group_infomap())) %>% 
+  #igraph::simplify(.) %>%
+  #as_tbl_graph() %>% 
+  #convert(to_simple) %>% 
+  ggraph(layout = "kk", maxiter = 1000) +
+    geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
+    geom_node_label(aes(label = name, color = community), size = 4) +
+    scale_edge_alpha_continuous("Euclidean distance ^2", range = c(.5, 0)) +
+    scale_edge_width_continuous("Euclidean distance ^2", range = c(2, 0)) +
+    scale_color_discrete("Network community") +
+  theme_graph() +
+    labs(title = str_c(league, " Football club comparisons (relative to league)"),
+       subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
+       #x = NULL,
+       #y = NULL,
+       caption = "538 data, @conor_tompkins")
+```
