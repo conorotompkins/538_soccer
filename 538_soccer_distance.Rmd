@@ -3,6 +3,7 @@ title: "538_soccer_distance"
 author: "Conor Tompkins"
 date: "8/15/2018"
 output: html_document
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -27,14 +28,9 @@ df %>%
 ```{r}
 df %>% 
   group_by(league) %>% 
-  mutate(off_league_median = median(off),
-         off_league_median = median(def))
-
-
-df %>% 
-  group_by(league) %>% 
   mutate(off_z = scale(off),
-         def_z = scale(def)) -> df_rel_league
+         def_z = scale(def)) %>% 
+  ungroup() -> df_rel_league
 ```
 
 ```{r}
@@ -66,7 +62,6 @@ df_rel_league %>%
 
 ```{r}
 df_rel_league %>% 
-  ungroup() %>% 
   select(name, off_z, def_z) %>% 
   column_to_rownames(var = "name") -> df_dist
 
@@ -74,25 +69,96 @@ df_dist
 rownames(df_dist) %>% 
   head()
 
-df_dist <- dist(df_dist, "euclidean")
+df_dist <- dist(df_dist, "euclidean", upper = TRUE)
 head(df_dist)
 
 df_dist %>% 
   tidy() %>% 
-  arrange(desc(distance)) %>% 
+  arrange(desc(distance)) -> df_dist
+
+df_dist %>% 
+  count(item1, sort = TRUE) %>% 
+  ggplot(aes(item1, n)) +
+  geom_point() +
+  coord_flip()
+```
+```{r}
+df_dist %>% 
   left_join(df_team_league, by = c("item1" = "name")) %>% 
   left_join(df_team_league, by = c("item2" = "name")) -> df_dist
-#This is wrong. Some teams don't have enough rows
 ```
 
 ```{r}
 df_dist %>% 
-  filter(league.x == "Barclays Premier League",
-         league.y == "Barclays Premier League") %>% 
-  #filter(item1 == "Pittsburgh Riverhounds") %>%
-  as_tbl_graph() %>% 
-  ggraph(layout = "drl") +
-    geom_edge_fan(aes(edge_alpha = distance)) + 
-    geom_node_label(aes(label = name)) +
-    scale_edge_alpha_continuous(range = c(0, .75))
+  mutate(distance = distance^2) %>% 
+  filter(league.x == "United Soccer League",
+         league.y == "United Soccer League") %>% 
+  summarize(percentile = quantile(distance, probs = .3)) %>% 
+  unlist() -> distance_filter
+
+
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  #filter(item1 == "Pittsburgh Riverhounds") %>% 
+  filter(league.x %in% c(league1, league2),
+         league.y %in% c(league1, league2)) %>% 
+  filter(distance <= distance_filter) %>% 
+  distinct(item1, item2, distance) -> test
+
 ```
+
+```{r fig.height=15, fig.width=15}
+league1 <- "United Soccer League"
+league2 <- NULL
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  #filter(item1 == "Pittsburgh Riverhounds") %>% 
+  filter(league.x %in% c(league1, league2),
+         league.y %in% c(league1, league2)) %>% 
+  filter(distance <= distance_filter) %>%
+  #gather(league_column, league, -c(item1, item2, distance)) %>% 
+  #select(-league_column) %>% 
+  #filter(item1 == "Pittsburgh Riverhounds") %>%
+  #graph_from_data_frame() %>% 
+  as_tbl_graph() %>% 
+  ggraph(layout = "kk", maxiter = 1000) +
+    geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
+    geom_node_label(aes(label = name), size = 4) +
+    scale_edge_alpha_continuous(range = c(.7, 0)) +
+    scale_edge_width_continuous(range = c(3, 0)) +
+  labs(title = "Football comparisons relative to league",
+       subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
+       x = NULL,
+       y = NULL,
+       caption = "538 data, @conor_tompkins")
+```
+
+```{r}
+#need to find way to "simplify" graph, remove duplicate edges
+league1 <- "United Soccer League"
+league2 <- "United Soccer League"
+df_dist %>% 
+  mutate(distance = distance^2) %>% 
+  #filter(item1 == "Pittsburgh Riverhounds") %>% 
+  filter(league.x %in% c(league1, league2),
+         league.y %in% c(league1, league2)) %>% 
+  filter(distance <= distance_filter) %>%
+  as_tbl_graph() %>% 
+  #igraph::simplify(.) %>%
+  #as_tbl_graph() %>% 
+  #convert(to_simple) %>% 
+    ggraph(layout = "kk", maxiter = 1000) +
+    geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
+    geom_node_label(aes(label = name), size = 4) +
+    scale_edge_alpha_continuous(range = c(.7, 0)) +
+    scale_edge_width_continuous(range = c(3, 0)) +
+  labs(title = "Football comparisons relative to league",
+       subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
+       x = NULL,
+       y = NULL,
+       caption = "538 data, @conor_tompkins")
+
+
+
+```
+
