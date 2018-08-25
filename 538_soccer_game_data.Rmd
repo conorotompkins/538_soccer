@@ -61,20 +61,26 @@ df_games %>%
   #colnames()
   gather(xg_measure, xg_value, -c(date:away_xg, score_measure, score_value)) %>% 
   filter(!is.na(home_score)) -> df_team
+```
 
-
+```{r}
 df_team %>% 
+  filter(team == team_filter) %>% 
   arrange(date, venue) %>% 
   ggplot(aes(date, xg_value, color = xg_measure)) +
     geom_point() +
     geom_smooth()
 
 df_team %>% 
+  filter(team == team_filter) %>% 
   arrange(date, venue) %>% 
   ggplot(aes(date, score_value, color = score_measure)) +
   geom_point() +
   geom_smooth()
+```
 
+
+```{r}
 league_filter <- "Barclays Premier League"
 
 df_team %>%
@@ -88,8 +94,6 @@ df_team %>%
   select(team) %>% 
   unlist() -> team_fct
 
-
-
 df_team %>% 
   filter(league == league_filter) %>% 
   spread(score_measure, score_value) %>% 
@@ -100,6 +104,4 @@ df_team %>%
     #stat_density_2d(aes(fill = stat(level)), geom = "polygon") +
     facet_wrap(~team)
 ```
-
-
 
