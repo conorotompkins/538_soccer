@@ -14,8 +14,91 @@ knitr::opts_chunk$set(echo = TRUE,
 ```{r}
 library(tidyverse)
 
-df <- read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv", progress = FALSE)
-df
+theme_set(theme_bw())
+
+data <- read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv", progress = FALSE)
+data
+```
+
+```{r}
+data %>% 
+  rename(home = team1,
+         away = team2,
+         home_score = score1,
+         away_score = score2,
+         home_xg = xg1,
+         away_xg = xg2) %>% 
+  #select(-c(team1, team2)) %>% 
+  mutate(teams = str_c(home, away, sep = " .vs ")) %>% 
+  select(date, league, teams, home, away, home_score, away_score, home_xg, away_xg) %>% 
+  #filter(league == "Barclays Premier League") %>% 
+  gather(venue, team, -c(date:teams, home_score:away_xg)) -> df
+
+df %>% 
+  filter(venue == "home") -> home
+
+df %>% 
+  filter(venue == "away") -> away
+
+bind_rows(home, away) %>% 
+  arrange(date, teams) -> df_games
+
+
+team_filter <- "Pittsburgh Riverhounds"
+df_games %>%
+  select(date, league, teams, team, venue, home_score, away_score, home_xg, away_xg) %>% 
+  mutate(score_team = case_when(venue == "home" ~ home_score,
+                                venue == "away" ~ away_score),
+         score_opp = case_when(venue == "away" ~ home_score,
+                               venue == "home" ~ away_score),
+         xg_team = case_when(venue == "home" ~ home_xg,
+                             venue == "away" ~ away_xg),
+         xg_opp = case_when(venue == "away" ~ home_xg,
+                            venue == "home" ~ away_xg)) %>% 
+  select(date, league, teams, team, venue, home_score, away_score, score_team, score_opp, home_xg, away_xg, xg_team, xg_opp) %>% 
+  #filter(team == team_filter) %>% 
+  gather(score_measure, score_value, -c(date:away_score, home_xg:xg_opp)) %>% 
+  #colnames()
+  gather(xg_measure, xg_value, -c(date:away_xg, score_measure, score_value)) %>% 
+  filter(!is.na(home_score)) -> df_team
+
+
+df_team %>% 
+  arrange(date, venue) %>% 
+  ggplot(aes(date, xg_value, color = xg_measure)) +
+    geom_point() +
+    geom_smooth()
+
+df_team %>% 
+  arrange(date, venue) %>% 
+  ggplot(aes(date, score_value, color = score_measure)) +
+  geom_point() +
+  geom_smooth()
+
+league_filter <- "Barclays Premier League"
+
+df_team %>%
+  filter(league == league_filter) %>% 
+  spread(score_measure, score_value) %>% 
+  mutate(goal_diff = score_team - score_opp) %>% 
+  group_by(team) %>% 
+  summarize(goal_diff = sum(goal_diff)) %>% 
+  arrange(desc(goal_diff)) %>% 
+  mutate(team = as.factor(team)) %>% 
+  select(team) %>% 
+  unlist() -> team_fct
+
+
+
+df_team %>% 
+  filter(league == league_filter) %>% 
+  spread(score_measure, score_value) %>% 
+  mutate(goal_diff = score_team - score_opp) %>% 
+  mutate(team = factor(team, levels = team_fct)) %>% 
+  ggplot(aes(score_team, score_opp)) +
+    geom_jitter(alpha = .3) +
+    #stat_density_2d(aes(fill = stat(level)), geom = "polygon") +
+    facet_wrap(~team)
 ```
 
 
