@@ -24,6 +24,12 @@ df
 
 df %>% 
   select(name, league) -> df_team_league
+
+df %>% 
+  select(league, spi) %>% 
+  group_by(league) %>% 
+  summarize(spi_league = median(spi)) %>% 
+  arrange(desc(spi_league)) -> df_league_spi
 ```
 
 ```{r}
@@ -124,28 +130,23 @@ df_dist %>%
 
 df_dist %>% 
   mutate(distance = distance^2) %>% 
-  #filter(item1 == "Pittsburgh Riverhounds") %>% 
   filter(league.x %in% c(league1, league2),
          league.y %in% c(league1, league2)) %>% 
   filter(distance <= distance_filter) %>%
-  #gather(league_column, league, -c(item1, item2, distance)) %>% 
-  #select(-league_column) %>% 
-  #filter(item1 == "Pittsburgh Riverhounds") %>%
-  #graph_from_data_frame() %>% 
   as_tbl_graph() %>% 
   ggraph(layout = "kk", maxiter = 1000) +
     geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
     geom_node_label(aes(label = name), size = 4) +
-    scale_edge_alpha_continuous(range = c(.7, 0)) +
-    scale_edge_width_continuous(range = c(3, 0)) +
-  labs(title = "Football comparisons relative to league",
+    scale_edge_alpha_continuous("Euclidean distance ^2", range = c(.5, 0)) +
+    scale_edge_width_continuous("Euclidean distance ^2", range = c(2, 0)) +
+  labs(title = str_c(league1, " football club comparisons (relative to league)"),
        subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
        x = NULL,
        y = NULL,
        caption = "538 data, @conor_tompkins")
 ```
 
-```{r}
+```{r error = TRUE}
 #need to find way to "simplify" graph, remove duplicate edges
 league1 <- "United Soccer League"
 league2 <- "United Soccer League"
@@ -155,10 +156,19 @@ df_dist %>%
   filter(league.x %in% c(league1, league2),
          league.y %in% c(league1, league2)) %>% 
   filter(distance <= 1.56) %>%
-  as_tbl_graph() -> test
-  convert(to_simple) %>% 
-  as_tbl_graph()
-    ggraph(layout = "kk", maxiter = 1000) +
+  as_tbl_graph() %>% 
+  convert(to_simple)
+
+df_dist %>% 
+  mutate(distance = distance^2) %>%
+  filter(league.x %in% c(league1, league2),
+         league.y %in% c(league1, league2)) %>% 
+  filter(distance <= 1.56) %>%
+  as_tbl_graph() %>%
+  morph(to_simple) %>% 
+  crystallise()
+
+  ggraph(layout = "kk", maxiter = 1000) +
     geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
     geom_node_label(aes(label = name), size = 4) +
     scale_edge_alpha_continuous(range = c(.7, 0)) +
@@ -172,13 +182,13 @@ df_dist %>%
 ```
 
 ```{r fig.height=15, fig.width=15}
-league <- "United Soccer League"
+league <- "French Ligue 1"
 
 df_dist %>% 
   mutate(distance = distance^2) %>% 
   filter(league.x == league,
          league.y == league) %>% 
-  summarize(percentile = quantile(distance, probs = .3)) %>% 
+  summarize(percentile = quantile(distance, probs = .8)) %>% 
   unlist() -> distance_filter
 
 league1 <- league
@@ -200,9 +210,40 @@ df_dist %>%
     scale_edge_width_continuous("Euclidean distance ^2", range = c(2, 0)) +
     scale_color_discrete("Network community") +
   theme_graph() +
-    labs(title = str_c(league, " Football club comparisons (relative to league)"),
+    labs(title = str_c(league, " football club comparisons (relative to league)"),
        subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
        #x = NULL,
        #y = NULL,
+       caption = "538 data, @conor_tompkins")
+```
+
+```{r}
+df_league_spi %>% 
+  top_n(20) %>% 
+  select(league) %>% 
+  unlist() -> top_leagues
+  
+
+#league1 <- top_leagues
+#league2 <- top_leagues
+df_dist %>% 
+  mutate(distance = distance^2) %>%
+  filter(league.x %in% c(top_leagues),
+         league.y %in% c(top_leagues)) %>% 
+  filter(distance <= 1.5) %>%
+  as_tbl_graph() %>% 
+  mutate(community = as.factor(group_infomap())) %>% 
+  #igraph::simplify(.) %>%
+  #as_tbl_graph() %>% 
+  #convert(to_simple) %>% 
+  ggraph(layout = "kk", maxiter = 10000) +
+    geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
+    #geom_node_label(aes(label = name, color = community), size = 4) +
+    geom_node_point(aes(color = community), size = 1) +
+    scale_edge_alpha_continuous("Euclidean distance ^2", range = c(.05, 0)) +
+    scale_edge_width_continuous("Euclidean distance ^2", range = c(1, .01)) +
+    scale_color_discrete("Network community") +
+    labs(title = "Football club comparisons (relative to league)",
+       subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
        caption = "538 data, @conor_tompkins")
 ```
