@@ -43,20 +43,20 @@ df %>%
   filter(venue == "away") -> away
 
 bind_rows(home, away) %>% 
-  arrange(date, teams) -> df_games
+  arrange(date, teams) %>%
+  arrange(team, league, date) %>% 
+  group_by(team, league) %>% 
+  mutate(game_number = dense_rank(date)) %>% 
+  ungroup() -> df_games
 
 
 df_games %>%
   select(date, league, 
          teams, team, 
-         venue, 
+         game_number, venue, 
          home_score, away_score, 
          home_xg, away_xg, 
          home_nsxg, away_nsxg) %>% 
-  arrange(team, league, date) %>% 
-  group_by(team, league) %>% 
-  mutate(game_number = dense_rank(date)) %>% 
-  ungroup() %>% 
   mutate(team_score = case_when(venue == "home" ~ home_score,
                                 venue == "away" ~ away_score),
          opp_score = case_when(venue == "away" ~ home_score,
@@ -77,14 +77,15 @@ df_games %>%
          team_xg, opp_xg, 
          home_nsxg, away_nsxg, 
          team_nsxg, opp_nsxg) %>% 
+  na.omit( )-> df_team
   #colnames()
-  gather(score_measure, score_value, -c(league:away_score, home_xg:opp_nsxg)) %>% 
+  #gather(score_measure, score_value, -c(league:away_score, home_xg:opp_nsxg)) %>% 
   #colnames()
-  gather(xg_measure, xg_value, -c(league:away_xg, home_nsxg:score_value)) %>% 
+  #gather(xg_measure, xg_value, -c(league:away_xg, home_nsxg:score_value)) %>% 
   #colnames()
-  gather(nsxg_measure, nsxg_value, -c(league:away_nsxg, score_measure:xg_value)) %>% 
+  #gather(nsxg_measure, nsxg_value, -c(league:away_nsxg, score_measure:xg_value)) %>% 
   #colnames()
-  filter(!is.na(home_score)) -> df_team
+  #filter(!is.na(home_score)) -> df_team
 ```
 
 ```{r}
@@ -116,7 +117,7 @@ league_filter <- "Barclays Premier League"
 df_team %>%
   filter(league == league_filter) %>% 
   spread(score_measure, score_value) %>% 
-  mutate(goal_diff = score_team - score_opp) %>% 
+  mutate(goal_diff = team_score - opp_score) %>% 
   group_by(team) %>% 
   summarize(goal_diff = sum(goal_diff)) %>% 
   arrange(desc(goal_diff)) %>% 
@@ -127,11 +128,49 @@ df_team %>%
 df_team %>% 
   filter(league == league_filter) %>% 
   spread(score_measure, score_value) %>% 
-  mutate(goal_diff = score_team - score_opp) %>% 
+  mutate(goal_diff = team_score - opp_score) %>% 
   mutate(team = factor(team, levels = team_fct)) %>% 
-  ggplot(aes(score_team, score_opp)) +
+  ggplot(aes(team_score, opp_score)) +
     geom_jitter(alpha = .3) +
     #stat_density_2d(aes(fill = stat(level)), geom = "polygon") +
     facet_wrap(~team)
 ```
 
+```{r eval = FALSE}
+#animating per game number distance network graphs
+
+library(widyr)
+library(tidygraph)
+library(ggraph)
+library(igraph)
+
+
+df_team %>% 
+  filter(league == "Barclays Premier League") %>% 
+  select(team, venue, date, game_number, team_xg, opp_xg) %>% 
+  group_by(team) %>% 
+  mutate(team_xg_cum = cumsum(team_xg),
+         opp_xg_cum = cumsum(opp_xg)) %>% 
+  ungroup() -> df_cum
+
+df_cum %>% 
+  group_by(game_number) %>% 
+  pairwise_dist(team, team_xg, opp_xg) %>% 
+  ungroup() -> df_dist
+  #ungroup() %>% 
+  #group_by(game_number) %>% 
+  #nest() -> df_dist
+
+df_dist %>% 
+  filter(game_number <= 5) %>% 
+  #unnest() %>% 
+  graph_from_data_frame() %>% 
+  #tbl_graph() %>% 
+  ggraph(layout = "kk") +
+  geom_edge_fan() +
+  geom_node_label(aes(label = name)) +
+  facet_edges(~game_number)
+  
+
+
+```
