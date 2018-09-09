@@ -88,52 +88,67 @@ df_games %>%
   #filter(!is.na(home_score)) -> df_team
 ```
 
-```{r}
-team_filter <- "Tottenham Hotspur"
+```{r eval = FALSE}
+team_filter <- "Leicester City"
 df_team %>% 
   filter(team == team_filter) %>% 
+  select(team, game_number, team_score, opp_score) %>% 
+  gather(score_measure, score_value, -c(team, game_number)) %>% 
   ggplot(aes(game_number, score_value, color = score_measure)) +
   geom_point() +
   geom_smooth()
 
 df_team %>% 
   filter(team == team_filter) %>% 
+  select(team, game_number, team_xg, opp_xg) %>% 
+  gather(xg_measure, xg_value, -c(team, game_number)) %>%
   ggplot(aes(game_number, xg_value, color = xg_measure)) +
     geom_point() +
     geom_smooth()
 
 df_team %>% 
   filter(team == team_filter) %>% 
+  select(team, game_number, team_nsxg, opp_nsxg) %>% 
+  gather(nsxg_measure, nsxg_value, -c(team, game_number)) %>%
   ggplot(aes(game_number, nsxg_value, color = nsxg_measure)) +
     geom_point() +
     geom_smooth()
-  
 ```
 
 
-```{r}
+```{r eval = FALSE}
 league_filter <- "Barclays Premier League"
 
 df_team %>%
   filter(league == league_filter) %>% 
-  spread(score_measure, score_value) %>% 
-  mutate(goal_diff = team_score - opp_score) %>% 
+  mutate(xg_diff = team_xg - opp_xg) %>% 
   group_by(team) %>% 
-  summarize(goal_diff = sum(goal_diff)) %>% 
-  arrange(desc(goal_diff)) %>% 
+  summarize(xg_diff = sum(xg_diff)) %>% 
+  arrange(desc(xg_diff)) %>% 
   mutate(team = as.factor(team)) %>% 
   select(team) %>% 
   unlist() -> team_fct
 
+#trying to turn this into geom_tile, need to complete() to introduce NAs then comvert to 0s
 df_team %>% 
   filter(league == league_filter) %>% 
-  spread(score_measure, score_value) %>% 
-  mutate(goal_diff = team_score - opp_score) %>% 
+  select(team, game_number, team_xg, opp_xg) %>% 
+  mutate(team_xg = round(team_xg, 1),
+         opp_xg = round(opp_xg, 1),
+         xg_diff = team_xg - opp_xg) %>% 
   mutate(team = factor(team, levels = team_fct)) %>% 
-  ggplot(aes(team_score, opp_score)) +
+  group_by(team, team_xg, opp_xg) %>% 
+  mutate(n = n()) %>% 
+  #count(team, team_xg, opp_xg, xg_diff) %>% 
+  ggplot(aes(team_xg, opp_xg, fill = n)) +
     geom_jitter(alpha = .3) +
+    #geom_tile() +
     #stat_density_2d(aes(fill = stat(level)), geom = "polygon") +
-    facet_wrap(~team)
+    facet_wrap(~team) +
+  scale_fill_viridis_c("Number of games") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(panel.grid = element_blank())
 ```
 
 ```{r eval = FALSE}
@@ -154,22 +169,21 @@ df_team %>%
   ungroup() -> df_cum
 
 df_cum %>% 
-  group_by(game_number) %>% 
+  #group_by(game_number) %>% 
+  filter(game_number == 40) %>% 
   pairwise_dist(team, team_xg, opp_xg) %>% 
-  ungroup() -> df_dist
+  mutate(distance = distance^2) -> df_dist
   #ungroup() %>% 
   #group_by(game_number) %>% 
   #nest() -> df_dist
 
-df_dist %>% 
-  filter(game_number <= 5) %>% 
-  #unnest() %>% 
-  graph_from_data_frame() %>% 
-  #tbl_graph() %>% 
-  ggraph(layout = "kk") +
+df_dist %>%
+  #as_tbl_graph() %>% 
+  graph_from_data_frame(directed = FALSE) %>% 
+  simplify(remove.multiple = TRUE) %>% 
+  ggraph(layout = "drl") +
   geom_edge_fan() +
-  geom_node_label(aes(label = name)) +
-  facet_edges(~game_number)
+  geom_node_label(aes(label = name))
   
 
 
