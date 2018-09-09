@@ -32,8 +32,6 @@ read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_global_rankin
 ```{r}
 df %>% 
   select(name, off, def) %>% 
-  mutate(off = off^2,
-         def = def^2) %>% 
   column_to_rownames(var = "name") -> df_dist
 
 df_dist
@@ -57,10 +55,10 @@ df_dist %>%
 
 ##Network graph
 ```{r}
-distance_filter <- 1
+distance_filter <- .5
 
 df_dist %>% 
-  #mutate(distance = distance^2) %>% 
+  mutate(distance = distance^2) %>% 
   filter(distance <= distance_filter) %>%
   as_tbl_graph() %>% 
   mutate(community = as.factor(group_edge_betweenness())) %>%
