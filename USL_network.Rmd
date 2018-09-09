@@ -1,0 +1,78 @@
+---
+title: "USL Club Network with Euclidean Distance"
+author: "Conor Tompkins"
+date: "8/15/2018"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+##Setup
+```{r}
+library(tidyverse)
+library(broom)
+library(ggraph)
+library(tidygraph)
+library(viridis)
+
+set_graph_style()
+```
+
+##Download data
+```{r}
+read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_global_rankings.csv", progress = FALSE) %>% 
+  filter(league == "United Soccer League") %>% 
+  mutate(name = str_replace(name, "Arizona United", "Phoenix Rising")) -> df
+```
+
+##Calculate Euclidean distance
+```{r}
+df %>% 
+  select(name, off, def) %>% 
+  mutate(off = off^2,
+         def = def^2) %>% 
+  column_to_rownames(var = "name") -> df_dist
+
+df_dist
+rownames(df_dist) %>% 
+  head()
+
+df_dist <- dist(df_dist, "euclidean", upper = FALSE)
+head(df_dist)
+
+df_dist %>% 
+  tidy() %>% 
+  arrange(desc(distance)) -> df_dist
+
+df_dist %>% 
+  count(item1, sort = TRUE) %>% 
+  ggplot(aes(item1, n)) +
+  geom_point() +
+  coord_flip() +
+  theme_bw()
+```
+
+##Network graph
+```{r}
+distance_filter <- 1
+
+df_dist %>% 
+  #mutate(distance = distance^2) %>% 
+  filter(distance <= distance_filter) %>%
+  as_tbl_graph() %>% 
+  mutate(community = as.factor(group_edge_betweenness())) %>%
+  ggraph(layout = "kk", maxiter = 1000) +
+    geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
+    geom_node_label(aes(label = name, color = community), size = 4) +
+    scale_color_discrete("Group") +
+    scale_edge_alpha_continuous("Euclidean distance ^2", range = c(.5, 0)) +
+    scale_edge_width_continuous("Euclidean distance ^2", range = c(2, 0)) +
+    labs(title = "United Soccer League clubs",
+       subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
+       x = NULL,
+       y = NULL,
+       caption = "538 data, @conor_tompkins")
+```
