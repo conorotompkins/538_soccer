@@ -16,6 +16,7 @@ library(broom)
 library(ggraph)
 library(tidygraph)
 library(viridis)
+library(igraph)
 
 set_graph_style()
 
@@ -43,20 +44,23 @@ df %>%
 ```{r}
 df_rel_league %>% 
   ggplot(aes(off, def, color = league)) +
-  geom_jitter(alpha = .5, show.legend = FALSE)
+  geom_jitter(alpha = .5, show.legend = FALSE) +
+  theme_bw()
 ```
 
 
 ```{r}
 df_rel_league %>% 
   ggplot(aes(off_z, def_z, color = league)) +
-  geom_jitter(alpha = .5, show.legend = FALSE)
+  geom_jitter(alpha = .5, show.legend = FALSE) +
+  theme_bw()
 ```
 
 ```{r}
 df_rel_league %>% 
   ggplot(aes(off, off_z, color = league)) +
-  geom_jitter(alpha = .5, show.legend = FALSE)
+  geom_jitter(alpha = .5, show.legend = FALSE) +
+  theme_bw()
 ```
 
 ```{r}
@@ -64,7 +68,8 @@ df_rel_league %>%
   ggplot(aes(def, def_z, color = league)) +
   geom_jitter(alpha = .5, show.legend = FALSE) +
   scale_x_reverse() +
-  scale_y_reverse()
+  scale_y_reverse() +
+  theme_bw()
 ```
 
 ```{r}
@@ -76,7 +81,7 @@ df_dist
 rownames(df_dist) %>% 
   head()
 
-df_dist <- dist(df_dist, "euclidean", upper = TRUE)
+df_dist <- dist(df_dist, "euclidean", upper = FALSE)
 head(df_dist)
 
 df_dist %>% 
@@ -87,7 +92,8 @@ df_dist %>%
   count(item1, sort = TRUE) %>% 
   ggplot(aes(item1, n)) +
   geom_point() +
-  coord_flip()
+  coord_flip() +
+  theme_bw()
 ```
 ```{r}
 df_dist %>% 
@@ -118,7 +124,7 @@ df_dist %>%
 
 ```{r fig.height=15, fig.width=15}
 #leave this one alone
-league1 <- "United Soccer League"
+league1 <- "Barclays Premier League"
 league2 <- NULL
 
 df_dist %>% 
@@ -147,38 +153,34 @@ df_dist %>%
 ```
 
 ```{r error = TRUE}
-#need to find way to "simplify" graph, remove duplicate edges
 league1 <- "United Soccer League"
-league2 <- "United Soccer League"
+league2 <- NULL
+
 df_dist %>% 
   mutate(distance = distance^2) %>% 
-  #filter(item1 == "Pittsburgh Riverhounds") %>% 
-  filter(league.x %in% c(league1, league2),
-         league.y %in% c(league1, league2)) %>% 
-  filter(distance <= 1.56) %>%
-  as_tbl_graph() %>% 
-  convert(to_simple)
+  filter(league.x == league1,
+         league.y == league1) %>% 
+  summarize(percentile = quantile(distance, probs = .3)) %>% 
+  unlist() -> distance_filter
 
 df_dist %>% 
-  mutate(distance = distance^2) %>%
+  mutate(distance = distance^2) %>% 
   filter(league.x %in% c(league1, league2),
          league.y %in% c(league1, league2)) %>% 
-  filter(distance <= 1.56) %>%
-  as_tbl_graph() %>%
-  morph(to_simple) %>% 
-  crystallise()
-
+  filter(distance <= distance_filter) %>%
+  as_tbl_graph() %>% 
+  mutate(community = as.factor(group_infomap())) %>%
+  #ggraph(layout = "drl") +
   ggraph(layout = "kk", maxiter = 1000) +
     geom_edge_fan(aes(edge_alpha = distance, edge_width = distance)) + 
-    geom_node_label(aes(label = name), size = 4) +
-    scale_edge_alpha_continuous(range = c(.7, 0)) +
-    scale_edge_width_continuous(range = c(3, 0)) +
-  labs(title = "Football comparisons relative to league",
+    geom_node_label(aes(label = name, color = community), size = 4) +
+    scale_edge_alpha_continuous("Euclidean distance ^2", range = c(.8, .3)) +
+    scale_edge_width_continuous("Euclidean distance ^2", range = c(2, 0)) +
+  labs(title = str_c(league1, " football club comparisons (relative to league)"),
        subtitle = "Euclidean distance (offensive rating, defensive rating)^2",
        x = NULL,
        y = NULL,
        caption = "538 data, @conor_tompkins")
-
 ```
 
 ```{r fig.height=15, fig.width=15}
