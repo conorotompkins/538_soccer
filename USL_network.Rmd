@@ -1,14 +1,18 @@
 ---
-title: "USL Club Network with Euclidean Distance"
+title: "Networking USL clubs with Euclidean distance"
 author: "Conor Tompkins"
-date: "8/15/2018"
+date: "9/14/2018"
 output: html_document
 runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE)
 ```
+
+Euclidean distance is a simple way to measure the distance between two points. It can also be used to measure how similar two sports teams are, given a set of variables. In this post, I use Euclidean distance to calculate the similarity between USL clubs and map that data to a network graph. I will use the [538 Soccer Power Index data](https://projects.fivethirtyeight.com/global-club-soccer-rankings/) to calculate the distance. 
 
 ##Setup
 ```{r}
@@ -22,39 +26,44 @@ set_graph_style()
 ```
 
 ##Download data
+This code downloads the data from 538's GitHub repo and does some light munging.
 ```{r}
 read_csv("https://projects.fivethirtyeight.com/soccer-api/club/spi_global_rankings.csv", progress = FALSE) %>% 
   filter(league == "United Soccer League") %>% 
   mutate(name = str_replace(name, "Arizona United", "Phoenix Rising")) -> df
+
+df
 ```
 
 ##Calculate Euclidean distance
+This is the code that measures the distance between the clubs. It uses the 538 offensive and defensive ratings.
 ```{r}
 df %>% 
   select(name, off, def) %>% 
   column_to_rownames(var = "name") -> df_dist
 
-df_dist
-rownames(df_dist) %>% 
-  head()
+#df_dist
+#rownames(df_dist) %>% 
+#  head()
 
 df_dist <- dist(df_dist, "euclidean", upper = FALSE)
-head(df_dist)
+#head(df_dist)
 
 df_dist %>% 
   tidy() %>% 
   arrange(desc(distance)) -> df_dist
 
-df_dist %>% 
-  count(item1, sort = TRUE) %>% 
-  ggplot(aes(item1, n)) +
-  geom_point() +
-  coord_flip() +
-  theme_bw()
+#df_dist %>% 
+#  count(item1, sort = TRUE) %>% 
+#  ggplot(aes(item1, n)) +
+#  geom_point() +
+#  coord_flip() +
+#  theme_bw()
 ```
 
 ##Network graph
-```{r}
+In this snippet I set a threshhold for how similar clubs need to be to warrant a connection. Then I graph it using tidygraph and ggraph.
+```{r fig.height=12, fig.width=12}
 distance_filter <- .5
 
 df_dist %>% 
@@ -74,3 +83,4 @@ df_dist %>%
        y = NULL,
        caption = "538 data, @conor_tompkins")
 ```
+The group_edge_betweenness() function clusters the clubs into communities according to which clubs they are similar to. FC Cincinnati and New York Redbulls II are unique acording to this measure. Groups 1 and 2 are mostly good clubs in different ways. The clubs in Group 3 struggle. My club, the Pittsburgh Riverhounds, are most similar to the Charleston Battery and Nashville FC.
