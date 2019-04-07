@@ -62,6 +62,6 @@ spi_smooth_gif <- df_epl_smooth %>%
   transition_reveal(date) +
   coord_cartesian(clip = 'off')
 
-animate(spi_smooth_gif, height = 900, width = 900, duration = 30)
+animate(spi_smooth_gif, height = 900, width = 900, duration = 30, nframes = 300)
 anim_save("output/spi_smooth.gif", height = 9, width = 100)
 
