@@ -3,9 +3,9 @@ title: "Premier League 538 SPI ratings"
 output: html_document
 ---
 
-538's Soccer Power Index rates the quality of soccer teams from a variety of leagues around the world. In this post I'll use `gganimate` to animate the quality of the teams across the past 3 seasons.
+538's [Soccer Power Index (SPI)](https://projects.fivethirtyeight.com/soccer-predictions/) rates the quality of soccer teams from a variety of leagues around the world. In this post I'll use `gganimate` to animate team SPI over the past 3 seasons.
 
-The SPI data is available on 538's [GitHub repo](https://github.com/fivethirtyeight/data/tree/master/soccer-spi)
+The SPI data is available on 538's [GitHub repo](https://github.com/fivethirtyeight/data/tree/master/soccer-spi).
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
                       warning = FALSE,
@@ -24,7 +24,7 @@ library(lubridate)
 theme_set(theme_minimal(base_size = 18))
 ```
 
-Load the data and make the data long:
+Load the data and make the data long, instead of having different columns for home and away results:
 ```{r}
 data <- read_csv("data/spi_matches.csv")
 
@@ -115,7 +115,7 @@ spi_smooth_gif <- df_epl_smooth %>%
 animate(spi_smooth_gif, height = 900, width = 900, duration = 15, nframes = 300)
 ```
 
-Observers of the EPL will know that in any given season there are 2-3 tiers of teams, given the economics and relegation structure of the league. In 2018 the difference between the top 6 and the rest of the league was particularly stark. This is partly due to the difficulties that Everton experienced after they sold Lukaku and signed old and bad players. This graph highlights Everton's SPI:
+Observers of the EPL will know that in any given season there are 2-3 tiers of teams, given the economics and relegation structure of the league. In 2018 the difference between the top 6 and the rest of the league was particularly stark. This is partly due to the difficulties that Everton experienced after they sold Lukaku and signed older and less skilled players. This graph highlights Everton's SPI:
 ```{r}
 everton_gif <- df_epl_smooth %>% 
   mutate(everton_flag = case_when(team == "Everton" ~ "Everton",
@@ -145,4 +145,3 @@ everton_gif <- df_epl_smooth %>%
 
 animate(everton_gif, height = 900, width = 900, duration = 15, nframes = 300)
 ```
-
