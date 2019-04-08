@@ -27,6 +27,9 @@ df_all <- bind_rows(df_home, df_away) %>%
   mutate(league_game_number = dense_rank(date)) %>% 
   filter(date < Sys.Date())
 
+df_all %>% 
+  count(league, sort = TRUE)
+
 df_test <- df_all %>% 
   filter(!(str_detect(league, "UEFA"))) %>% 
   arrange(team, date) %>% 
