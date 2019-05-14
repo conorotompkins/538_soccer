@@ -91,22 +91,55 @@ club_logos <- tibble(team = c("Barcelona",
                               "Viktoria Plzen"),
                      url = c("https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/83.png&w=56",
                              "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/382.png&w=56",
-                             rep(NA, 6),
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/86.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/132.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/364.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/111.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/1068.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/160.png&w=56",
                              "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/367.png&w=56",
-                             rep(NA, 10),
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/114.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/104.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/360.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/437.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/124.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/432.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/94.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/110.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/1929.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/167.png&w=56",
                              "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/139.png&w=56",
-                             rep(NA, 12)))
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/493.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/2722.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/133.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/7911.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/570.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/1963.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/174.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/887.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/148.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/2290.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/442.png&w=56",
+                             "https://secure.espn.com/combiner/i?img=/i/teamlogos/soccer/500/11706.png&w=56"))
 
 
 
 df_graph <- df %>% 
-  left_join(club_logos) %>% 
-  filter(date <= "2019-04-01",
-         team %in% c("Man. City", "Barcelona", "Ajax", "Tottenham"))
+  semi_join(club_logos) %>% 
+  left_join(club_logos) #%>% 
+  #filter(date <= "2019-04-01")
+
+df_graph %>% 
+  count(team, url, sort = TRUE)
+
+df_graph %>% 
+  ggplot(aes(team, spi)) +
+  geom_image(aes(image = url)) +
+  coord_flip()
 
 df_graph %>% 
   ggplot(aes(date, win_final, group = team)) +
-  geom_line(aes(color = team)) +
+  geom_line(aes(color = team, size = spi)) +
   geom_point(aes(color = team)) +
   #geom_image(aes(x = ymd("2019-07-01"), image = url), size = .05) +
   geom_image(data = df_graph %>% filter(date == last(date)),
@@ -115,6 +148,7 @@ df_graph %>%
              aes(x = last(df_graph$date) + 40, label = team),
              hjust = -.1,
              vjust = 0) +
+  scale_size_continuous(range = c(.1, 3)) +
   guides(color = FALSE) +
   coord_cartesian(clip = 'off') +
   theme(plot.margin = margin(5.5, 110, 5.5, 5.5))
@@ -126,10 +160,10 @@ timeline <- df_graph %>%
   geom_point(aes(color = team)) +
   #geom_image(aes(x = ymd("2019-07-01"), image = url), size = .05) +
   geom_image(aes(image = url), size = .05) +
-  geom_label(data = df_graph %>% filter(date == last(date)),
-             aes(x = last(df_graph$date) + 40, label = team),
+  geom_label(aes(x = last(df_graph$date) + 40, label = team),
              hjust = -.1,
              vjust = 0) +
+  scale_size_continuous(range = c(.1, 3)) +
   guides(color = FALSE) +
   coord_cartesian(clip = 'off') +
   theme(plot.margin = margin(5.5, 110, 5.5, 5.5))
@@ -141,11 +175,10 @@ timeline_gif <- timeline +
 gif_duration <- 10
 
 animate(timeline_gif, height = 450, width = 1200, duration = gif_duration, nframes = gif_duration * 20, end_pause = 40)
-im_save("output/champions_league_win_prob.gif")
+anim_save("output/champions_league_win_prob.gif")
 
 
 df_graph %>% 
-  left_join(club_logos) %>% 
   ggplot(aes(spi, win_final)) +
   geom_point() +
   geom_image(aes(image = url), size = .05) +
