@@ -170,7 +170,11 @@ timeline <- df_graph %>%
 timeline
 
 timeline_gif <- timeline +
-  transition_reveal(date)
+  transition_reveal(date) #+
+  #view_follow(fixed_y = c(0, NA),
+  #            fixed_x = TRUE)
+
+animate(timeline_gif)
 
 gif_duration <- 10
 
@@ -180,8 +184,9 @@ anim_save("output/champions_league_win_prob.gif")
 
 df_graph %>% 
   ggplot(aes(spi, win_final)) +
-  geom_point() +
-  geom_image(aes(image = url), size = .05) +
-  #geom_smooth() +
+  #geom_point() +
+  #geom_image(aes(image = url), size = .05) +
+  geom_label(aes(label = team)) +
+  geom_smooth(method = "lm", se = FALSE, alpha = .3) +
   transition_reveal(date)
 
