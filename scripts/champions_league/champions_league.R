@@ -8,8 +8,9 @@ library(ggrepel)
 library(gganimate)
 library(scales)
 library(ggimage)
+library(hrbrthemes)
 
-theme_set(theme_minimal())
+theme_set(theme_ipsum())
 
 path <- drive_download("538 Champions League Probabilities", overwrite = TRUE) %>% 
   pull(local_path)
@@ -133,40 +134,55 @@ df_graph %>%
   count(team, url, sort = TRUE)
 
 df_graph %>% 
+  group_by(team, url) %>% 
+  summarize(spi = last(spi)) %>% 
+  ungroup() %>% 
+  mutate(team = fct_reorder(team, spi)) %>% 
   ggplot(aes(team, spi)) +
-  geom_image(aes(image = url)) +
+  geom_image(aes(image = url), size = .04, by="height") +
   coord_flip()
 
 df_graph %>% 
+  mutate(final_two = case_when(team %in% c("Liverpool", "Tottenham") ~ TRUE,
+                               !(team %in% c("Liverpool", "Tottenham")) ~ FALSE)) %>% 
   ggplot(aes(date, win_final, group = team)) +
-  geom_line(aes(color = team, size = spi)) +
+  geom_line(aes(color = team, size = final_two)) +
   geom_point(aes(color = team)) +
   #geom_image(aes(x = ymd("2019-07-01"), image = url), size = .05) +
   geom_image(data = df_graph %>% filter(date == last(date)),
-             aes(image = url)) +
+             aes(image = url), size = .08, by = "height") +
   geom_label(data = df_graph %>% filter(date == last(date)),
-             aes(x = last(df_graph$date) + 40, label = team),
+             aes(x = last(df_graph$date) + 40, label = team, alpha = spi),
              hjust = -.1,
              vjust = 0) +
-  scale_size_continuous(range = c(.1, 3)) +
-  guides(color = FALSE) +
+  scale_y_percent("Win final") +
+  scale_size_discrete(range = c(.1, 3)) +
+  scale_alpha_continuous(range = c(.01, 1)) +
+  guides(color = FALSE,
+         size = FALSE,
+         alpha = FALSE) +
   coord_cartesian(clip = 'off') +
-  theme(plot.margin = margin(5.5, 110, 5.5, 5.5))
+  theme(plot.margin = margin(10, 110, 5.5, 5.5))
 
 
 timeline <- df_graph %>% 
+  mutate(final_two = case_when(team %in% c("Liverpool", "Tottenham") ~ TRUE,
+                               !(team %in% c("Liverpool", "Tottenham")) ~ FALSE)) %>% 
   ggplot(aes(date, win_final, group = team)) +
-  geom_line(aes(color = team)) +
+  geom_line(aes(color = team, size = final_two)) +
   geom_point(aes(color = team)) +
-  #geom_image(aes(x = ymd("2019-07-01"), image = url), size = .05) +
-  geom_image(aes(image = url), size = .05) +
-  geom_label(aes(x = last(df_graph$date) + 40, label = team),
+  geom_image(aes(image = url), size = .08, by = "height") +
+  geom_label(aes(x = last(df_graph$date) + 40, label = team, alpha = spi),
              hjust = -.1,
              vjust = 0) +
-  scale_size_continuous(range = c(.1, 3)) +
-  guides(color = FALSE) +
+  scale_y_percent("Win final") +
+  scale_size_discrete(range = c(.1, 3)) +
+  scale_alpha_continuous(range = c(.01, 1)) +
+  guides(color = FALSE,
+         size = FALSE,
+         alpha = FALSE) +
   coord_cartesian(clip = 'off') +
-  theme(plot.margin = margin(5.5, 110, 5.5, 5.5))
+  theme(plot.margin = margin(10, 110, 5.5, 5.5))
 timeline
 
 timeline_gif <- timeline +
@@ -174,12 +190,17 @@ timeline_gif <- timeline +
   #view_follow(fixed_y = c(0, NA),
   #            fixed_x = TRUE)
 
-animate(timeline_gif)
+#animate(timeline_gif)
 
-gif_duration <- 10
+gif_duration <- 20
 
-animate(timeline_gif, height = 450, width = 1200, duration = gif_duration, nframes = gif_duration * 20, end_pause = 40)
-anim_save("output/champions_league_win_prob.gif")
+#animate(timeline_gif, height = 450, width = 1200, duration = gif_duration, nframes = gif_duration * 20, end_pause = 40)
+anim_save(animation = timeline_gif, filename = "output/champions_league_win_prob.gif", 
+          height = 450, 
+          width = 1200, 
+          duration = gif_duration, 
+          fps = 20, 
+          end_pause = 80)
 
 
 df_graph %>% 
